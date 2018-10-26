@@ -1,0 +1,12 @@
+import {http} from '../lib/http-plus';
+
+//获取创建人
+export const url_get_packages_error_developers = "get|packages-error/developers";
+export const api_get_packages_error_developers = function () {
+    return http(url_get_packages_error_developers);
+};
+//获取列表packages-error
+export const url_get_packages_error = "get|packages-error";
+export const api_get_packages_error = function (data) {
+    return http(url_get_packages_error,data);
+};

@@ -1,0 +1,155 @@
+<template>
+    <page class="c-demand-schedules-index">
+        <card-search @search="search" :form="searchData" :clears="clears"></card-search>
+        <div class="mt-sm">
+            <permission class="ml-sm inline"
+                        tag="request-button"
+                        type="primary"
+                        size="mini"
+                        req-key="url_internal_letters_draft_delete"
+                        :mintime="200"
+                        :route="apis.url_internal_letters_draft_delete"
+                        @click="add_package">新增
+            </permission>
+        </div>
+        <table-module class="mt-sm"
+                      :loading="loading"
+                      :first-loading="firstLoading"
+                      @selection-change="selection_change"
+                      :table-data="tableData"></table-module>
+        <el-pagination
+            class="page-fixed"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="page"
+            :page-sizes="[20, 50, 100, 200,500]"
+            :page-size="pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total">
+        </el-pagination>
+    </page>
+</template>
+<style lang="stylus">
+    .c-demand-schedules-index{
+        .el-dropdown .el-button-group {
+            display: inline-block;
+            position: relative;
+            top: 1px;
+        }
+    }
+</style>
+<script>
+    import {api_get_packages_error} from '@/api/error-info-solution'
+    import {
+        url_internal_letters_draft_delete,
+    } from '@/api/system-notice-drafts'
+    export default {
+        page:{
+            devinfo:{
+                frontEnd:'覃宏峰',
+                backEnd:'蓝术术',
+                createndtime:'2018-10-18',
+                updatendtime:'2018-10-19'
+            }
+        },
+        data() {
+            return {
+                firstLoading:true,
+                loading:false,
+                searchData:{
+                    error_info:'',
+                    creator_id:'',
+                    type:'create_time',
+                    starttime:'',
+                    endtime:'',
+                    shipping_name:''
+                },
+                clears:{
+                    error_info:'',
+                    creator_id:'',
+                    type:'create_time',
+                    starttime:'',
+                    endtime:'',
+                    shipping_name:''
+                },
+                page:1,
+                pageSize:20,
+                total:0,
+                tableData:[],
+                ids:[]
+            }
+        },
+        permission:{
+            url_internal_letters_draft_delete
+        },
+        refresh(){
+            this.init();
+        },
+        mounted(){
+            this.init();
+        },
+        methods:{
+            init_params(){
+                let data = window.clone(this.searchData);
+                if(!!data.starttime){
+                    data.starttime = datef('YYYY-MM-dd', this.searchData.starttime.getTime()/1000);
+                }else{
+                    delete data.starttime;
+                }
+                if(!!data.endtime){
+                    data.endtime = datef('YYYY-MM-dd', this.searchData.endtime.getTime()/1000);
+                }else{
+                    delete data.endtime;
+                }
+                if(data.error_info.trim()){
+                    data.error_info.trim();
+                }else{
+                    delete data.error_info;
+                }
+                if(data.shipping_name.trim()){
+                    data.shipping_name.trim();
+                }else{
+                    delete data.shipping_name;
+                }
+                data.creator_id===''&&delete data.type;
+                data.page = this.page;
+                data.pageSize = this.pageSize;
+                return data
+            },
+            init(){
+                let data = this.init_params();
+                this.loading = true;
+                this.$http(api_get_packages_error,data).then(res=>{
+                    this.tableData = res.data;
+                    this.total = res.count;
+                    this.loading = false;
+                    this.firstLoading = false;
+                }).catch(code=>{
+                    this.$message({type:'error',message:code.message||code});
+                })
+            },
+            search(){
+                this.init()
+            },
+            handleSizeChange(val) {
+                this.pageSize = val;
+                this.init()
+            },
+            handleCurrentChange(val) {
+                this.page = val;
+                this.init();
+            },
+            selection_change(selects){
+                this.ids = selects.map(row=>row.id);
+            },
+            add_package(){
+                console.log('add');
+            }
+        },
+        components: {
+            cardSearch:require('./card-search').default,
+            tableModule:require('./table-module').default,
+            trendsSelect: require('@/components/trends-select.vue').default,
+        }
+    }
+</script>

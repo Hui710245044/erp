@@ -1,0 +1,56 @@
+import {http} from '../lib/http-plus';
+
+//获取第三方仓库存调配申请列表
+export const url_warehouse_goods_channel_log = "get|warehouse-goods-channel-log";
+export const api_warehouse_goods_channel_log = function (data) {
+    return http(url_warehouse_goods_channel_log, data);
+};
+
+//获取创建人列表
+export const url_channel_log_creator = "get|warehouse-goods-channel-log/creator";
+export const api_channel_log_creator = function () {
+    return http(url_channel_log_creator);
+};
+
+//获取审批人列表
+export const url_channel_log_auditor = "get|warehouse-goods-channel-log/auditor";
+export const api_channel_log_auditor = function () {
+    return http(url_channel_log_auditor);
+};
+
+//获取调配单详细
+export const url_channel_log_read = "get|warehouse-goods-channel-log/:id";
+export const api_channel_log_read = function (id) {
+    return http(Url2(url_channel_log_read, {id:id}));
+};
+
+//调配单状态获取
+export const url_channel_log_status = "get|warehouse-goods-channel-log/status";
+export const api_channel_log_status = function () {
+    return http(url_channel_log_status);
+};
+
+//调配审核通过
+export const url_channel_log_audit = "post|warehouse-goods-channel-log/audit";
+export const api_channel_log_audit = function (data) {
+    return http(url_channel_log_audit, data);
+};
+
+//调配审核不通过
+export const url_channel_log_deny = "post|warehouse-goods-channel-log/deny";
+export const api_channel_log_deny = function (data) {
+    return http(url_channel_log_deny, data);
+};
+
+//根据调配单获取审批人
+export const url_auditor_by_channel = "get|warehouse-goods-channel-log/verifier";
+export const api_auditor_by_channel = function (data) {
+    return http(url_auditor_by_channel, data);
+};
+
+//更改审批人
+export const url_channel_log_change_auditor = "post|warehouse-goods-channel-log/changeAuditor";
+export const api_channel_log_change_auditor = function (data) {
+    return http(url_channel_log_change_auditor, data);
+};
+

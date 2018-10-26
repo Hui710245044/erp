@@ -1,0 +1,142 @@
+<template>
+   <div>
+       <search :search-data="searchData" :clears="clears" @search="search" :purchasing="purchasing"></search>
+       <table-list :table-data="tableData" :loading="loading" :first-time="firstTime" @edit="edit" @check="check" @size-change="handleSizeChange"
+                   @current-change="handleCurrentChange"
+                   @log-operate="log_operate"
+       ></table-list>
+       <operate v-model="operate_show" :title="title" :purchaser="purchaser"  :resId="resId" :purchasing="copyPurchasing" @search="search" :purchaser_id="purchaser_id"></operate>
+       <log-dialog v-model="log_show" :title="title" :table-data="dialog_data"></log-dialog>
+   </div>
+</template>
+
+<script>
+    import {getUser,api_get_categories,api_check_categories,api_edit_categories,api_get_log} from '../../../api/sort-bind-purchasers';
+    export default {
+        data() {
+            return {
+                purchaser_id:'',
+                log_show:false,
+                purchasing:null,
+                loading:false,
+                firstTime:true,
+                operate_show:false,
+                title:'',
+                copyPurchasing:null,
+                resId:'',
+                purchaser:'',
+                searchData: {
+                    purchaser_id:'',
+                    page:1,
+                    pageSize:50
+                },
+                tableData:{
+                        totalSize: 0,
+                        lists: [],
+                        page: 1,
+                        pageSize: 50,
+                        total:0,
+                },
+                dialog_data:[],
+                clears:{
+                    buyer:'',
+                }
+            }
+        },
+        mounted(){
+            this.$http(getUser).then(res=>{
+                this.purchasing = res;
+                this.purchasing.unshift({id:'',realname:'全部'});
+                setTimeout(() => {
+                    this.loading = false;
+                }, 1000);
+            }).catch(code=>{
+
+            });
+            this.init()
+        },
+        methods: {
+            search() {
+                this.init()
+            },
+            log_operate(val){
+                let id = val.id;
+                this.$http(api_get_log,id).then(res=>{
+                    console.log(res,'aa')
+                    this.dialog_data = res;
+                    this.$nextTick(()=>{
+                        this.log_show=true
+                    })
+                });
+                let name = val.name_path.replace(/-/g,'>>');
+                this.title=`查看分类: ${name}的操作日志`;
+            },
+            edit(val){
+                console.log(val,'ixi');
+                let name = val.name_path.replace(/-/g,'>>');
+                this.copyPurchasing = JSON.parse(JSON.stringify(this.purchasing));
+                this.purchaser_id=val.purchaser_id;
+                this.copyPurchasing.forEach((row,index,arr)=>{
+                    if(row.realname.includes('全部')){
+                        arr.splice(index,1)
+                    }
+                });
+                this.title=`修改分类：${name}绑定的采购员`;
+                this.operate_show=true;
+                this.resId=val.id;
+                this.purchaser=val.id;
+            },
+            check(val){
+                let name = val.name_path.replace(/-/g,'>>');
+                console.log(val,'check');
+                let id = {id:val.id};
+                this.operate_show=true;
+                this. purchaser=val.purchaser;
+                this.title=`查看分类: ${name}绑定的采购员`;
+                // this.$http(api_check_categories,id).then(res=>{
+                //     console.log(res,'response')
+                // }).catch(err=>{
+                //     console.log(err)
+                // })
+            },
+            init(){
+                this.loading=true;
+                let data = window.clone(this.searchData);
+                this.$http(api_get_categories,data).then(res=>{
+                    console.log(res,'uu');
+                    this.loading=false;
+                    this.firstTime=false;
+                    this.tableData.lists = res.data.filter(row=>{
+                        if(row.name_path.split('-').length>1){
+                            return row
+                        }
+                    });
+                    this.tableData.page=Number(this.tableData.page);
+                    this.tableData.pageSize=Number(this.tableData.pageSize);
+                    this.tableData.total=this.tableData.lists.length;
+                }).catch(err=>{
+                    console.log(err);
+                })
+            },
+            handleSizeChange(val) {//------------分页
+                this.tableData.page = 1;
+                this.tableData.pageSize = val;
+                this.init();
+            },
+            handleCurrentChange(val) {//------------分页
+                this.tableData.page = val;
+                this.init();
+            },
+        },
+        components:{
+            search:require('./search').default,
+            tableList:require('./table-list').default,
+            operate:require('./operate').default,
+            logDialog:require('./log-dialog').default,
+        }
+    }
+</script>
+
+<style scoped>
+
+</style>

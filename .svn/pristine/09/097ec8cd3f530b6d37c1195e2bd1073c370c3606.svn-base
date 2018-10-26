@@ -1,0 +1,245 @@
+<template>
+    <page class="p-index">
+        <search
+            ref="search"
+            :searchData="searchData"
+            @select-status="select_status"
+            @search="search"
+            @clear="clear"
+        ></search>
+        <el-row class="mt-sm">
+            <permission tag="request-button"
+                        :route="apis.url_post_virtual_purchase_order_create_finance"
+                        class="inline ml-sm"
+                        :mintime="200"
+                        req-key="url_post_virtual_purchase_order_create_finance"
+                        @click="virtual_pay_apply">生成虚拟付款申请
+            </permission>
+            <permission tag="request-button"
+                        :route="apis.url_post_virtual_purchase_order_push_yks"
+                        class="inline ml-sm"
+                        :mintime="200"
+                        :disabled="selectList.length === 0"
+                        req-key="url_post_virtual_purchase_order_push_yks"
+                        @click="push_yks">推送给有棵树
+            </permission>
+        </el-row>
+        <table-list :loading="loading"
+                    class="mt-sm"
+                    :tableData="tableData"
+                    @update="update"
+                    :first-loading="firstLoading"
+                    @selection-change="selectionChange"></table-list>
+        <el-pagination
+            class="page-fixed"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="searchData.page"
+            :page-sizes="[20, 50, 100, 200,500]"
+            :page-size="searchData.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total">
+        </el-pagination>
+    </page>
+</template>
+<style lang="stylus">
+    .p-index {
+        .el-dropdown .el-button-group {
+            display: inline-block;
+            position: relative;
+            top: -1px;
+        }
+        .el-message-box__status {
+            top: 27% !important;
+        }
+        .btn {
+            margin: 5px 0;
+            border: 0;
+        }
+    }
+</style>
+<script>
+    import {
+        api_get_virtual_purchase_order,
+        api_post_virtual_purchase_order_create_finance,
+        url_post_virtual_purchase_order_create_finance,
+        url_post_virtual_purchase_order_push_yks,
+        api_post_virtual_purchase_order_push_yks
+    } from '@/api/virtual-purchase-order';
+
+    export default {
+        permission: {
+            url_post_virtual_purchase_order_create_finance,
+            url_post_virtual_purchase_order_push_yks
+        },
+        page: {
+            devinfo: {
+                frontEnd: '覃宏峰',
+                backEnd: '黄伟杰',
+                createTime: '2017-9-20',
+                updateTime: '2017-9-25'
+            },
+            beforeClose() {
+                return true;
+            }
+        },
+        refresh() {
+            this.init();
+        },
+        data() {
+            return {
+                firstLoading: true,
+                loading: false,
+                total: 0,
+                selectList: [],
+                tableData: [],
+                searchData: {
+                    page: 1,
+                    pageSize: 50,
+                    order_status: '',
+                    bill_type: 0,
+                    bill_number: "",
+                    date_b: "",
+                    date_e: "",
+                    virtual_supplier_id: "",
+                    time_status: 0,
+                    warehouse_id: "",
+                    balance_type: "",
+                    payment_status: '',
+                },
+            }
+        },
+        mounted() {
+            this.init();
+        },
+        methods: {
+            init_params() {
+                let paramsData = window.clone(this.searchData);
+                if (this.searchData.date_b) {
+                    paramsData.date_b = datef('YYYY-MM-dd', this.searchData.date_b / 1000);
+                } else {
+                    paramsData.date_b = '';
+                }
+                if (this.searchData.date_e) {
+                    paramsData.date_e = datef('YYYY-MM-dd', this.searchData.date_e / 1000);
+                } else {
+                    paramsData.date_e = '';
+                }
+                if (this.searchData.bill_number.trim()) {
+                    paramsData.bill_number = this.searchData.bill_number.replace(new RegExp(' ', 'gm'), '\n').trim().split('\n').map(row => row.trim()).filter(row => row !== '');
+                } else {
+                    paramsData.bill_number = '';
+                }
+                return paramsData
+            },
+            //页面初始化请求列表数据
+            init() {
+                let params = this.init_params();
+                this.tableData = [];
+                this.loading = true;
+                this.$http(api_get_virtual_purchase_order, params).then(res => {
+                    this.total = res.count;
+                    this.tableData = res.data;
+                    this.loading = false;
+                    this.firstLoading = false
+                }).catch(code => {
+                    this.$message({
+                        type: 'error',
+                        message: code.message || code
+                    })
+                })
+            },
+            select_status(val) {
+                this.searchData.order_status = val;
+                this.init();
+            },
+            //点击搜索按钮  搜索
+            search() {
+                this.init();
+            },
+            //清空
+            clear() {
+                Object.keys(this.searchData).forEach(key => {
+                    this.searchData[key] = '';
+                });
+                this.searchData = {
+                    page: 1,
+                    pageSize: 50,
+                    snType: "purchase_order_code",
+                    dateType: "purchase_time",
+                };
+                this.init();
+            },
+            //更改页面条数
+            handleSizeChange(val) {
+                this.searchData.pageSize = val;
+                this.init();
+            },
+            //跳转页数
+            handleCurrentChange(val) {
+                this.searchData.page = val;
+                this.init();
+            },
+            //添加成功 更新
+            update() {
+                this.searchData.purchase_user_id = "";
+                this.init()
+            },
+            //选中
+            selectionChange(val) {
+                this.selectList = val;
+            },
+            refresh() {
+                this.init();
+            },
+            virtual_pay_apply() {
+                if (this.selectList.length === 0) {
+                    this.$reqKey('url_post_virtual_purchase_order_create_finance', false);
+                    this.$message({type: 'warning', message: '请选择需要操作的数据！'});
+                    return
+                }
+                this.$http(api_post_virtual_purchase_order_create_finance, {ids: JSON.stringify(this.selectList.map(row => row.virtual_order_id))}).then(res => {
+                    this.$message({type: 'success', message: res.message || res});
+                    this.init();
+                }).catch(code => {
+                    this.$message({type: 'error', message: code.message || code});
+                }).finally(() => {
+                    setTimeout(() => {
+                        this.$reqKey('url_post_virtual_purchase_order_create_finance', false);
+                    }, 200);
+                })
+            },
+            push_yks() {
+                this.$confirm(`您将已勾选的虚拟采购单推送给有棵树，确定进行此操作?`, '提示', {
+                    confirmButtonText: "确定",
+                    cancelButtonText: "取消",
+                    type: "warning"
+                }).then(() => {
+                    this.$http(api_post_virtual_purchase_order_push_yks, {ids: JSON.stringify(this.selectList.map(row => row.id))}).then(res => {
+                        this.$message({type: 'success', message: res.message || res});
+                        this.init();
+                    }).catch(code => {
+                        this.$message({type: 'error', message: code.message || code});
+                    }).finally(() => {
+                        setTimeout(() => {
+                            this.$reqKey('url_post_virtual_purchase_order_push_yks', false);
+                        }, 200);
+                    })
+                }).catch(() => {
+                    this.$message({
+                        type: "info",
+                        message: "已取消"
+                    })
+                }).finally(() => {
+                    setTimeout(() => {
+                        this.$reqKey('url_post_virtual_purchase_order_push_yks', false);
+                    }, 200);
+                });
+            }
+        },
+        components: {
+            search: require('./search').default,
+            tableList: require('./table-list').default
+        }
+    }
+</script>

@@ -1,0 +1,133 @@
+<template>
+    <div class="c-card-search p-package-tab-search">
+        <search-card :params="form" :clears="clears" @search="search">
+            <label-item label="物流错误信息：">
+                <el-input v-sf.sn_text
+                          v-model="form.error_info"
+                          @keydown.native.enter="search"
+                          placeholder="可模糊搜索"
+                          class="inline enter-result s-width-large"></el-input>
+            </label-item>
+            <label-item class="ml-sm" label="创建人：">
+                <el-select v-model="form.creator_id"
+                           class="s-width-small inline"
+                           clearable
+                           v-sf.type>
+                    <el-option
+                        v-for="res in operatorList"
+                        :label="res.label"
+                        :value="res.value"
+                        :key="res.value"
+                    ></el-option>
+                </el-select>
+            </label-item>
+            <el-select v-model="form.type"
+                       class="s-width-small inline ml-sm"
+                       v-sf.type>
+                <el-option
+                    v-for="res in timeTypeList"
+                    :label="res.label"
+                    :value="res.value"
+                    :key="res.value"
+                ></el-option>
+            </el-select>
+            <el-date-picker class="date inline"
+                            v-model="form.starttime"
+                            :picker-options="picker_b"
+                            v-sf.starttime
+                            placeholder="开始时间"></el-date-picker> --
+            <el-date-picker
+                    class="date inline"
+                    placeholder="结束时间"
+                    v-model="form.endtime"
+                    v-sf.endtime
+                    :picker-options="picker_e"></el-date-picker>
+            <label-item class="ml-sm mr-sm" label="物流渠道：">
+                <el-input v-sf.sn_text
+                          v-model="form.shipping_name"
+                          @keydown.native.enter="search"
+                          placeholder="可模糊搜索"
+                          class="inline enter-result s-width-large"></el-input>
+            </label-item>
+        </search-card>
+    </div>
+</template>
+<style lang="stylus">
+    .c-card-search {
+        .el-card {
+            overflow: inherit;
+            .p-package-tab-buttons {
+                position: relative;
+                top: 2px;
+            }
+        }
+    }
+</style>
+<script>
+    import {api_get_packages_error_developers} from '@/api/error-info-solution'
+    export default {
+        page:{
+            devinfo:{
+                frontEnd:'覃宏峰',
+                backEnd:'邓海波',
+                createndtime:'2018-8-22',
+                updatendtime:'2018-8-31'
+            }
+        },
+        data() {
+            return {
+                operatorList:[],
+                timeTypeList:[
+                    {label:'创建时间',value:'create_time'},
+                    {label:'更新时间',value:'update_time'}
+                ],
+                picker_b: {
+                    disabledDate: (time) => {
+                        if (this.form.endtime) {
+                            return time.getTime() > this.form.endtime;
+                        } else {
+                            return time.getTime() > new Date();
+                        }
+                    }
+                },
+                picker_e: {
+                    disabledDate: (time) => {
+                        return time.getTime() < this.form.starttime||time.getTime()>new Date();
+                    }
+                },
+            }
+        },
+        mounted(){
+            this.get_creator();
+        },
+        methods: {
+            get_creator(){
+                this.$http(api_get_packages_error_developers).then(res=>{
+                    this.operatorList = [{label:'全部',value:''},...res.data.map(row=>({label:row.creator_name,value:row.creator_id}))];
+                }).catch(code=>{
+                    console.log(code);
+                })
+            },
+            search() {
+                this.$emit("search");
+            }
+        },
+        props: {
+            form: {
+                required: true,
+                type: Object
+            },
+            clears: {
+                required: true,
+                type: Object
+            }
+        }
+        ,
+        components: {
+            searchCard: require('@/components/search-card.vue').default,
+            labelItem: require('@/components/label-item.vue').default,
+            orderInput: require("@/components/order-input.vue").default,
+            scrollSelect:require('@/components/scroll-select.vue').default,
+        }
+    }
+</script>

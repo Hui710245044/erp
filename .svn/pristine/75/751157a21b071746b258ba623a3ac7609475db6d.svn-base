@@ -1,0 +1,246 @@
+<template>
+    <page-dialog class="c-third-stock-in-look" v-model="visible" @open="open" @close="close" size="large"
+                 :title="title">
+        <div v-if="isLook">
+            <table class="template mt-md">
+                <tr>
+                    <td width="12.5%" class="bold-font">调入平台</td>
+                    <td width="12.5%">{{lookData.to_channel_name}}</td>
+                    <td width="12.5%" class="bold-font">调出平台</td>
+                    <td width="12.5%">{{lookData.from_channel_name}}</td>
+                    <td width="12.5%" class="bold-font">申请借调数量</td>
+                    <td width="12.5%">{{lookData.quantity}}</td>
+                    <td width="12.5%" class="bold-font">审批借调数量</td>
+                    <td width="12.5%">{{lookData.actual_quantity}}</td>
+                </tr>
+                <tr>
+                    <td class="bold-font">创建人</td>
+                    <td>{{lookData.creator_name}}</td>
+                    <td class="bold-font">审批人</td>
+                    <td>{{lookData.auditor_name}}</td>
+                    <td class="bold-font">状态</td>
+                    <td>{{lookData.status_text}}</td>
+                    <td class="bold-font">仓库</td>
+                    <td>{{lookData.warehouse_name}}</td>
+                </tr>
+                <tr>
+                    <td class="bold-font">创建时间</td>
+                    <td :colspan="3">{{lookData.create_time | filterTime}}</td>
+                    <td class="bold-font">审批时间</td>
+                    <td :colspan="3">{{lookData.update_time | filterTime}}</td>
+                </tr>
+                <tr>
+                    <td class="bold-font">借调原因</td>
+                    <td :colspan="7">{{lookData.remark}}</td>
+                </tr>
+                <tr v-if="lookData.status === 2">
+                    <td class="bold-font">批注</td>
+                    <td :colspan="7">{{lookData.reject_reason}}</td>
+                </tr>
+            </table>
+        </div>
+        <div v-if="isAudit">
+            <el-row>
+                <el-col :span="6">
+                    <label-item label="创建人：">
+                        <span>{{lookData.creator_name}}</span>
+                    </label-item>
+                </el-col>
+                <el-col :span="9">
+                    <label-item label="创建时间：">
+                        <span>{{lookData.create_time | filterTime}}</span>
+                    </label-item>
+                </el-col>
+                <el-col :span="9">
+                    <label-item label="仓库：">
+                        <span>{{lookData.warehouse_name}}</span>
+                    </label-item>
+                </el-col>
+            </el-row>
+            <table class="template mt-sm">
+                <tr>
+                    <th width="10%">SKU</th>
+                    <th width="40%">产品名称</th>
+                    <th width="10%">调入平台</th>
+                    <th width="10%">调出平台</th>
+                    <th width="10%">调出平台可用库存</th>
+                    <th width="10%">申请借调数量</th>
+                    <th width="10%"><span class="red">*</span>借调数量</th>
+                </tr>
+                <tr>
+                    <td>
+                        <div>{{lookData.sku}}</div>
+                        <div v-for="item in lookData.sku_alias">{{item || `--`}}</div>
+                    </td>
+                    <td>{{lookData.goods_name}}</td>
+                    <td>{{lookData.to_channel_name}}</td>
+                    <td>{{lookData.from_channel_name}}</td>
+                    <td>{{lookData.sku_available_quantity}}</td>
+                    <td>{{lookData.quantity}}</td>
+                    <td>
+                        <integer-input v-model="lookData.actual_quantity" :min="0"></integer-input>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="bold-font">借调原因</span></td>
+                    <td :colspan="6">{{lookData.remark}}</td>
+                </tr>
+            </table>
+            <div class="mt-sm">
+                <span class="fl inline">批注：</span>
+                <el-input class="audit-reason" type="textarea" v-model="reason" placeholder="请输入内容"></el-input>
+            </div>
+
+        </div>
+        <div slot="footer">
+            <div v-if="isLook">
+                <el-button size="mini" @click.native="visible = false">关闭</el-button>
+            </div>
+            <div v-if="isAudit">
+                <permission tag="requestButton"
+                            req-key="auditApply"
+                            @click="audit"
+                            :route="apis.url_channel_log_audit">同意
+                </permission>
+                <permission tag="requestButton"
+                            req-key="denyApply"
+                            type="default"
+                            @click="deny"
+                            :route="apis.url_channel_log_deny">不同意
+                </permission>
+                <permission tag="ElButton"
+                            @click="change_auditor"
+                            :route="apis.url_auditor_by_channel">修改审批人
+                </permission>
+                <el-button size="mini" @click.native="visible = false">关闭</el-button>
+            </div>
+        </div>
+        <change-auditor v-model="auditorChangeVisible"
+                        :apply_id="lookData.id"
+                        :auditor-list="auditorList"
+                        @change="refresh"></change-auditor>
+    </page-dialog>
+</template>
+<style lang="stylus">
+    .c-third-stock-in-look {
+        .audit-reason {
+            display: inline-block;
+            vertical-align: top;
+        }
+    }
+</style>
+<script>
+    import {
+        api_channel_log_audit,
+        api_channel_log_deny,
+        api_auditor_by_channel,
+        url_channel_log_audit,
+        url_channel_log_deny,
+        url_auditor_by_channel,
+    } from "@/api/warehouse-goods-channel";
+
+    export default {
+        permission: {
+            url_channel_log_audit,
+            url_channel_log_deny,
+            url_auditor_by_channel,
+        },
+        data() {
+            return {
+                visible: false,
+                reason: '',
+                auditorList: [],
+                auditorChangeVisible: false,
+            }
+        },
+        filters: {
+            filterTime(val) {
+                return datef("YYYY-MM-dd HH:mm:ss", val);
+            },
+        },
+        methods: {
+            open() {
+
+            },
+            audit() {//同意
+                let quantity = Number(this.lookData.actual_quantity);
+                if (quantity === 0 || quantity > this.lookData.quantity || quantity > this.lookData.sku_available_quantity) {
+                    this.$message({type: 'error', message: '请输入有效的借调数量'});
+                    this.$reqKey('auditApply', false);
+                    return;
+                }
+                let params = {
+                    id: this.lookData.id,
+                    actual_quantity: quantity
+                };
+                this.$http(api_channel_log_audit, params).then(res => {
+                    this.$message({type: 'success', message: res.message || res});
+                    this.refresh();
+                }).catch(code => {
+                    this.$message({type: 'error', message: code.message || code});
+                }).finally(() => {
+                    setTimeout(() => {
+                        this.$reqKey('auditApply', false);
+                    }, 200);
+                });
+            },
+            deny() {//不同意
+                this.reason = this.reason.trim();
+                if (this.reason === '') {
+                    this.$message({type: 'error', message: '请填写批注'});
+                    this.$reqKey('denyApply', false);
+                    return;
+                }
+                let params = {
+                    id: this.lookData.id,
+                    reject_reason: this.reason,
+                };
+                this.$http(api_channel_log_deny, params).then(res => {
+                    this.$message({type: 'success', message: res.message || res});
+                    this.refresh();
+                }).catch(code => {
+                    this.$message({type: 'error', message: code.message || code});
+                }).finally(() => {
+                    this.$reqKey('denyApply', false);
+                }, 200);
+            },
+            change_auditor() {
+                this.$http(api_auditor_by_channel, {channel_id: this.lookData.from_channel_id}).then(res => {
+                    this.auditorList = res;
+                    this.auditorChangeVisible = true;
+                }).catch(code => {
+                    this.$message({type: 'error', message: code.message || code});
+                })
+            },
+            refresh() {//刷新页面
+                this.visible = false;
+                this.$emit('search');
+            },
+            close() {// 关闭页面，清除缓存
+                this.reason = '';
+            }
+        },
+        watch: {
+            value(val) {
+                this.visible = val;
+            },
+            visible(val) {
+                this.$emit('input', val);
+            }
+        },
+        props: {
+            value: {},
+            isLook: {},
+            isAudit: {},
+            lookData: {},
+            title: {},
+        },
+        components: {
+            requestButton: require('@/global-components/request-button.vue').default,
+            pageDialog: require('@/components/page-dialog.vue').default,
+            labelItem: require('@/components/label-item.vue').default,
+            integerInput: require('@/components/integer-input.vue').default,
+            changeAuditor: require('./change-auditor.vue').default,
+        }
+    }
+</script>
